@@ -140,7 +140,10 @@ def get_usage(
         except PlaywrightTimeout:
             error_msg = "Timeout connecting to Claude"
         except Exception as e:
-            error_msg = f"Error: {str(e)}"
+            if "Executable doesn't exist" in str(e) or "playwright install" in str(e):
+                error_msg = "Playwright browsers not installed. Run: playwright install chromium"
+            else:
+                error_msg = f"Error: {str(e)}"
         finally:
             browser.close()
 
@@ -180,7 +183,8 @@ def interactive_login(cookie_file: Path | None = None) -> bool:
             # Wait for user to reach the main chat page
             # No timeout to give user enough time
             print("Waiting for you to complete login...")
-            page.wait_for_url("**/chats**", timeout=0)
+            # Match both /chats and /chat/
+            page.wait_for_url(lambda url: "/chat" in url, timeout=0)
             
             print("Session detected! Capturing cookies...")
             cookies = context.cookies()

@@ -159,12 +159,24 @@ class ClaudeUsageIndicator:
                 except json.JSONDecodeError:
                     return {"error": "Error parsing API JSON"}
             else:
-                stderr_msg = result.stderr.strip() if result.stderr else "Unknown error"
+                stderr_msg = result.stderr.strip() if result.stderr else ""
+                stdout_msg = result.stdout.strip() if result.stdout else ""
+                
+                # Check for specific Playwright error in stdout/stderr
+                full_output = f"{stdout_msg}\n{stderr_msg}".lower()
+                if "playwright install" in full_output or "executable doesn't exist" in full_output:
+                    return {"error": "Playwright browsers missing"}
+                
                 # If the script returned a formatted JSON error, pass it
+                if stdout_msg.startswith('{') and 'error' in stdout_msg:
+                    try: return json.loads(stdout_msg)
+                    except: pass
                 if stderr_msg.startswith('{') and 'error' in stderr_msg:
                     try: return json.loads(stderr_msg)
                     except: pass
-                return {"error": f"System error: {stderr_msg[:50]}..."}
+                
+                err_message = stderr_msg if stderr_msg else "Unknown error"
+                return {"error": f"Error: {err_message[:50]}..."}
         except subprocess.TimeoutExpired:
             return {"error": "Timeout connecting to Claude"}
         except Exception as e:
